@@ -57,15 +57,32 @@ interface SaveRecipeState {
 }
 
 export async function handleSaveRecipe(
-  recipe: GenerateRecipeOutput & { ingredients: string }
+  recipe: GenerateRecipeOutput & { ingredients: string },
+  userId: string | null
 ): Promise<SaveRecipeState> {
+  if (!userId) {
+    return {
+      success: false,
+      error: 'Je moet ingelogd zijn om een recept op te slaan.',
+    };
+  }
+
   try {
+    // Save to user's favorites
+    const favoritesCollection = collection(db, 'users', userId, 'favorites');
+    await addDoc(favoritesCollection, {
+      ...recipe,
+      createdAt: serverTimestamp(),
+    });
+
+    // Also save to general history for anonymous users
     const historyCollection = collection(db, 'recipe_history');
     await addDoc(historyCollection, {
       ingredients: recipe.ingredients,
-      recipe: JSON.stringify(recipe), // Store the structured recipe
+      recipe: JSON.stringify(recipe),
       timestamp: serverTimestamp(),
     });
+
     return { success: true, error: null };
   } catch (e: any) {
     console.error('Failed to save recipe:', e);

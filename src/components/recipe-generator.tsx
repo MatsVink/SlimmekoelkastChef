@@ -43,7 +43,7 @@ export default function RecipeGenerator() {
   const { user, isUserLoading } = useUser();
 
   useEffect(() => {
-    if (!user && !isUserLoading && auth) {
+    if (!user && !isUserLoading && auth && !auth.currentUser) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, isUserLoading, auth]);
@@ -78,25 +78,36 @@ export default function RecipeGenerator() {
   }
 
   async function saveRecipe() {
-    if (!recipe || !user) {
+    if (!recipe) {
       toast({
         variant: 'destructive',
         title: 'Fout',
-        description: 'Geen recept om op te slaan of gebruiker niet aangemeld.',
+        description: 'Geen recept om op te slaan.',
+      });
+      return;
+    }
+
+    if (!user || user.isAnonymous) {
+      toast({
+        title: 'Inloggen vereist',
+        description: 'Log in om je favoriete recepten op te slaan.',
       });
       return;
     }
     
     setIsSaving(true);
-    const result = await handleSaveRecipe({
-      ...recipe,
-      ingredients: form.getValues('ingredients'),
-    });
+    const result = await handleSaveRecipe(
+      {
+        ...recipe,
+        ingredients: form.getValues('ingredients'),
+      },
+      user.uid
+    );
     
     if (result.success) {
       toast({
         title: "Recept opgeslagen!",
-        description: `${recipe.title} is toegevoegd aan je collectie.`,
+        description: `${recipe.title} is toegevoegd aan je favorieten.`,
       });
     } else {
        toast({
