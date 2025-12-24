@@ -69,39 +69,39 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   // Effect to subscribe to Firebase auth state changes
   useEffect(() => {
-    if (!auth) { // If no Auth service instance, cannot determine user state
+    if (!auth) {
       setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
       return;
     }
-
-    // Handle redirect result
+  
+    // Set initial loading state and check for redirect result.
+    setUserAuthState(current => ({ ...current, isUserLoading: true }));
+  
     getRedirectResult(auth)
       .then((result) => {
-        // This gives you a Google Access Token. You can use it to access the Google API.
-        // const credential = GoogleAuthProvider.credentialFromResult(result);
-        // const token = credential.accessToken;
-        // The signed-in user info.
-        // const user = result.user;
-      }).catch((error) => {
-        // Handle Errors here.
+        // If result is null, it means the user has just landed on the page
+        // and not from a redirect. onAuthStateChanged will handle this.
+        // If result is not null, a user has signed in via redirect.
+        // onAuthStateChanged will also fire, but this ensures we capture it.
+      })
+      .catch((error) => {
         console.error("FirebaseProvider: getRedirectResult error:", error);
+        setUserAuthState(current => ({ ...current, userError: error }));
       });
-
-
-    setUserAuthState({ user: auth.currentUser, isUserLoading: true, userError: null }); // Reset on auth instance change
-
+  
     const unsubscribe = onAuthStateChanged(
       auth,
-      (firebaseUser) => { // Auth state determined
+      (firebaseUser) => {
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
-      (error) => { // Auth listener error
+      (error) => {
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
+  
     return () => unsubscribe(); // Cleanup
-  }, [auth]); // Depends on the auth instance
+  }, [auth]);
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
