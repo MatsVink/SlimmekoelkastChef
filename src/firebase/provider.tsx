@@ -43,7 +43,7 @@ export interface FirebaseServicesAndUser {
 }
 
 // Return type for useUser() - specific to user auth state
-export interface UserHookResult { // Renamed from UserAuthHookResult for consistency if desired, or keep as UserAuthHookResult
+export interface UserHookResult { 
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -69,29 +69,52 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
 // Effect to subscribe to Firebase auth state changes
 useEffect(() => {
-  if (!auth) {
-    setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
-    return;
-  }
-
-  // Zet loading op true bij initialisatie
-  setUserAuthState(prev => ({ ...prev, isUserLoading: true }));
-
-  // Luister direct naar de gebruiker. Dit werkt perfect samen met signInWithPopup.
-  const unsubscribe = onAuthStateChanged(
-    auth,
-    (firebaseUser) => {
-      console.log("Auth state changed:", firebaseUser?.email); // Debug log
-      setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-    },
-    (error) => {
-      console.error("FirebaseProvider: Auth state listener error:", error);
-      setUserAuthState({ user: null, isUserLoading: false, userError: error });
+    if (!auth) {
+      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+      return;
     }
-  );
 
-  return () => unsubscribe();
-}, [auth]);
+    // This flag prevents the onAuthStateChanged listener from firing before getRedirectResult has completed.
+    let redirectResultHandled = false;
+
+    // First, check for a redirect result.
+    getRedirectResult(auth)
+      .then((result) => {
+        // If a result exists, a user has just signed in via redirect.
+        // The onAuthStateChanged listener will handle the user state update.
+        // If result is null, it means no redirect login happened on this page load.
+        console.log("getRedirectResult successful, result:", result);
+      })
+      .catch((error) => {
+        console.error("FirebaseProvider: Error getting redirect result:", error);
+        setUserAuthState(prev => ({ ...prev, userError: error }));
+      })
+      .finally(() => {
+        // Now that getRedirectResult is done, we can safely listen for auth state changes.
+        redirectResultHandled = true;
+      });
+
+    // onAuthStateChanged listener handles all auth state updates:
+    // - Initial load (fires with current user or null)
+    // - After getRedirectResult confirms a user
+    // - Standard sign-in/sign-out
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (firebaseUser) => {
+        if (redirectResultHandled) {
+            console.log("Auth state changed:", firebaseUser?.email);
+            setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        }
+      },
+      (error) => {
+        console.error("FirebaseProvider: Auth state listener error:", error);
+        setUserAuthState({ user: null, isUserLoading: false, userError: error });
+      }
+    );
+
+    return () => unsubscribe();
+  }, [auth]);
+
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);

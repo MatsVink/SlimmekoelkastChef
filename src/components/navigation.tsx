@@ -16,7 +16,7 @@ import {
 import { useUser, useAuth } from '@/firebase';
 import { 
   GoogleAuthProvider, 
-  signInWithPopup, // <--- VERANDER DIT (was signInWithRedirect)
+  signInWithRedirect, 
   signOut 
 } from 'firebase/auth';
 
@@ -38,9 +38,9 @@ export default function Navigation() {
     if (!auth) return;
     const provider = new GoogleAuthProvider();
     try {
-      // 2. Gebruik signInWithPopup in plaats van signInWithRedirect
-      await signInWithPopup(auth, provider);
-      // Je hoeft hierna niks te doen; onAuthStateChanged in je provider pakt de login automatisch op.
+      // 2. Gebruik weer redirect
+      await signInWithRedirect(auth, provider);
+      // De pagina zal nu herladen.
     } catch (error) {
       console.error("Error signing in with Google: ", error);
     }
