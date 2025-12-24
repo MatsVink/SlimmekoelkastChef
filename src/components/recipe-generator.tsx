@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,6 +20,14 @@ import { handleGenerateRecipe } from '@/app/actions';
 import { Sparkles, LoaderCircle } from 'lucide-react';
 import RecipeDisplay from './recipe-display';
 import RecipeLoading from './recipe-loading';
+import {
+  useFirestore,
+  useUser,
+  initiateAnonymousSignIn,
+  useAuth,
+} from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 const formSchema = z.object({
   ingredients: z.string().min(3, {
@@ -31,6 +39,15 @@ export default function RecipeGenerator() {
   const [isLoading, setIsLoading] = useState(false);
   const [recipes, setRecipes] = useState<string | null>(null);
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+
+  useEffect(() => {
+    if (!user && !isUserLoading) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [user, isUserLoading, auth]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -56,6 +73,14 @@ export default function RecipeGenerator() {
       });
     } else if (response.data) {
       setRecipes(response.data.recipes);
+      if (firestore) {
+        const historyCollection = collection(firestore, 'recipe_history');
+        addDocumentNonBlocking(historyCollection, {
+          ingredients: values.ingredients,
+          recipe: response.data.recipes,
+          timestamp: serverTimestamp(),
+        });
+      }
     }
 
     setIsLoading(false);
@@ -88,7 +113,7 @@ export default function RecipeGenerator() {
           />
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isUserLoading}
             className="w-full transition-all"
             size="lg"
           >
