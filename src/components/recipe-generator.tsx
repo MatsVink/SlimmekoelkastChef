@@ -16,18 +16,17 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { handleGenerateRecipe } from '@/app/actions';
+import { handleGenerateRecipe, handleSaveRecipe } from '@/app/actions';
 import { Sparkles, LoaderCircle } from 'lucide-react';
 import RecipeDisplay from './recipe-display';
 import RecipeLoading from './recipe-loading';
 import {
-  useFirestore,
+  useAuth,
   useUser,
   initiateAnonymousSignIn,
-  useAuth,
 } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import type { GenerateRecipeOutput } from '@/ai/flows/generate-recipes-from-ingredients';
+
 
 const formSchema = z.object({
   ingredients: z.string().min(3, {
@@ -37,14 +36,14 @@ const formSchema = z.object({
 
 export default function RecipeGenerator() {
   const [isLoading, setIsLoading] = useState(false);
-  const [recipes, setRecipes] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [recipe, setRecipe] = useState<GenerateRecipeOutput | null>(null);
   const { toast } = useToast();
-  const firestore = useFirestore();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
 
   useEffect(() => {
-    if (!user && !isUserLoading) {
+    if (!user && !isUserLoading && auth) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, isUserLoading, auth]);
@@ -58,7 +57,7 @@ export default function RecipeGenerator() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    setRecipes(null);
+    setRecipe(null);
 
     const formData = new FormData();
     formData.append('ingredients', values.ingredients);
@@ -72,18 +71,42 @@ export default function RecipeGenerator() {
         description: response.error,
       });
     } else if (response.data) {
-      setRecipes(response.data.recipes);
-      if (firestore) {
-        const historyCollection = collection(firestore, 'recipe_history');
-        addDocumentNonBlocking(historyCollection, {
-          ingredients: values.ingredients,
-          recipe: response.data.recipes,
-          timestamp: serverTimestamp(),
-        });
-      }
+      setRecipe(response.data);
     }
 
     setIsLoading(false);
+  }
+
+  async function saveRecipe() {
+    if (!recipe || !user) {
+      toast({
+        variant: 'destructive',
+        title: 'Fout',
+        description: 'Geen recept om op te slaan of gebruiker niet aangemeld.',
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    const result = await handleSaveRecipe({
+      ...recipe,
+      ingredients: form.getValues('ingredients'),
+    });
+    
+    if (result.success) {
+      toast({
+        title: "Recept opgeslagen!",
+        description: `${recipe.title} is toegevoegd aan je collectie.`,
+      });
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Oeps! Er is iets misgegaan.',
+        description: result.error,
+      });
+    }
+
+    setIsSaving(false);
   }
 
   return (
@@ -132,7 +155,7 @@ export default function RecipeGenerator() {
         </form>
       </Form>
       {isLoading && <RecipeLoading />}
-      {recipes && <RecipeDisplay recipes={recipes} />}
+      {recipe && <RecipeDisplay recipe={recipe} onSave={saveRecipe} isSaving={isSaving} />}
     </div>
   );
 }

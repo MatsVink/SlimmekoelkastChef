@@ -1,56 +1,52 @@
 'use server';
 
 /**
- * @fileOverview Generates recipe ideas based on a list of ingredients provided by the user.
+ * @fileOverview Generates a recipe based on a list of ingredients provided by the user.
  *
- * - generateRecipesFromIngredients - A function that generates recipe ideas from ingredients.
- * - GenerateRecipesFromIngredientsInput - The input type for the generateRecipesFromIngredients function.
- * - GenerateRecipesFromIngredientsOutput - The return type for the generateRecipesFromIngredients function.
+ * - generateRecipe - A function that generates a recipe from ingredients.
+ * - GenerateRecipeInput - The input type for the generateRecipe function.
+ * - GenerateRecipeOutput - The return type for the generateRecipe function.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const GenerateRecipesFromIngredientsInputSchema = z.object({
+const GenerateRecipeInputSchema = z.object({
   ingredients: z
     .string()
     .describe('A comma-separated list of ingredients (e.g., chicken, rice, broccoli).'),
 });
-export type GenerateRecipesFromIngredientsInput = z.infer<
-  typeof GenerateRecipesFromIngredientsInputSchema
+export type GenerateRecipeInput = z.infer<
+  typeof GenerateRecipeInputSchema
 >;
 
-const GenerateRecipesFromIngredientsOutputSchema = z.object({
-  recipes: z
-    .string()
-    .describe('A list of recipe ideas based on the provided ingredients.'),
+const GenerateRecipeOutputSchema = z.object({
+  title: z.string().describe('The title of the recipe.'),
+  preparationTime: z.string().describe('The estimated preparation time.'),
+  steps: z.array(z.string()).describe('The steps to prepare the recipe.'),
 });
-export type GenerateRecipesFromIngredientsOutput = z.infer<
-  typeof GenerateRecipesFromIngredientsOutputSchema
+export type GenerateRecipeOutput = z.infer<
+  typeof GenerateRecipeOutputSchema
 >;
 
-export async function generateRecipesFromIngredients(
-  input: GenerateRecipesFromIngredientsInput
-): Promise<GenerateRecipesFromIngredientsOutput> {
-  return generateRecipesFromIngredientsFlow(input);
+export async function generateRecipe(
+  input: GenerateRecipeInput
+): Promise<GenerateRecipeOutput> {
+  return generateRecipeFlow(input);
 }
 
 const prompt = ai.definePrompt({
-  name: 'generateRecipesFromIngredientsPrompt',
-  input: {schema: GenerateRecipesFromIngredientsInputSchema},
-  output: {schema: GenerateRecipesFromIngredientsOutputSchema},
-  prompt: `You are a recipe generator. Given a list of ingredients, you will generate a list of possible recipes.
-
-  Ingredients: {{{ingredients}}}
-
-  Recipes:`, // Removed the unnecessary 'Recipes:' prefix.
+  name: 'generateRecipePrompt',
+  input: {schema: GenerateRecipeInputSchema},
+  output: {schema: GenerateRecipeOutputSchema},
+  prompt: `Ik heb deze ingrediënten: {{{ingredients}}}. Maak een kort, leuk recept met titel, bereidingstijd en stappen.`,
 });
 
-const generateRecipesFromIngredientsFlow = ai.defineFlow(
+const generateRecipeFlow = ai.defineFlow(
   {
-    name: 'generateRecipesFromIngredientsFlow',
-    inputSchema: GenerateRecipesFromIngredientsInputSchema,
-    outputSchema: GenerateRecipesFromIngredientsOutputSchema,
+    name: 'generateRecipeFlow',
+    inputSchema: GenerateRecipeInputSchema,
+    outputSchema: GenerateRecipeOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);
