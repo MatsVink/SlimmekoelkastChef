@@ -14,7 +14,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUser, useAuth } from '@/firebase';
-import { GoogleAuthProvider, signInWithRedirect, signOut } from 'firebase/auth';
+import { 
+  GoogleAuthProvider, 
+  signInWithPopup, // <--- VERANDER DIT (was signInWithRedirect)
+  signOut 
+} from 'firebase/auth';
 
 const GoogleIcon = () => (
     <svg className="h-4 w-4 mr-2" viewBox="0 0 48 48">
@@ -34,7 +38,9 @@ export default function Navigation() {
     if (!auth) return;
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithRedirect(auth, provider);
+      // 2. Gebruik signInWithPopup in plaats van signInWithRedirect
+      await signInWithPopup(auth, provider);
+      // Je hoeft hierna niks te doen; onAuthStateChanged in je provider pakt de login automatisch op.
     } catch (error) {
       console.error("Error signing in with Google: ", error);
     }

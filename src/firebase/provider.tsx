@@ -67,54 +67,31 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
-  // Effect to subscribe to Firebase auth state changes
-  useEffect(() => {
-    if (!auth) {
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
-      return;
-    }
-  
-    // Set initial loading state and check for redirect result.
-    setUserAuthState(current => ({ ...current, isUserLoading: true }));
-  
-    // First, process any redirect result. This is crucial for when the app loads
-    // after a user has been redirected back from the Google sign-in page.
-    getRedirectResult(auth)
-      .then((result) => {
-        // If result is null, it means the user just landed on the page, not from a redirect.
-        // `onAuthStateChanged` will handle getting the current user state.
-        // If a result exists, the user has just signed in. `onAuthStateChanged` will
-        // also fire, but processing this ensures we can handle new user logic if needed.
-        if (result) {
-          // The user is signed in. `onAuthStateChanged` will update the state.
-        }
-      })
-      .catch((error) => {
-        // Handle errors from the redirect, e.g., user cancels the sign-in.
-        console.error("FirebaseProvider: Error processing redirect result:", error);
-        setUserAuthState(current => ({ ...current, userError: error }));
-      })
-      .finally(() => {
-        // The definitive user state is determined by the onAuthStateChanged listener.
-        // We set up the listener *after* trying to get the redirect result.
-        const unsubscribe = onAuthStateChanged(
-          auth,
-          (firebaseUser) => {
-            // This is the single source of truth for the user's auth state.
-            setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-          },
-          (error) => {
-            console.error("FirebaseProvider: Auth state listener error:", error);
-            setUserAuthState({ user: null, isUserLoading: false, userError: error });
-          }
-        );
-  
-        // Return the unsubscribe function for cleanup.
-        return unsubscribe;
-      });
-  
-  }, [auth]);
+// Effect to subscribe to Firebase auth state changes
+useEffect(() => {
+  if (!auth) {
+    setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+    return;
+  }
 
+  // Zet loading op true bij initialisatie
+  setUserAuthState(prev => ({ ...prev, isUserLoading: true }));
+
+  // Luister direct naar de gebruiker. Dit werkt perfect samen met signInWithPopup.
+  const unsubscribe = onAuthStateChanged(
+    auth,
+    (firebaseUser) => {
+      console.log("Auth state changed:", firebaseUser?.email); // Debug log
+      setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+    },
+    (error) => {
+      console.error("FirebaseProvider: Auth state listener error:", error);
+      setUserAuthState({ user: null, isUserLoading: false, userError: error });
+    }
+  );
+
+  return () => unsubscribe();
+}, [auth]);
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
     const servicesAvailable = !!(firebaseApp && firestore && auth);
