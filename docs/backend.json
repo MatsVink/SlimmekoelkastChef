@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "RecipeHistory": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RecipeHistory",
+      "type": "object",
+      "description": "Represents a record of recipe generation, including the ingredients used and the timestamp of the request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the RecipeHistory entry."
+        },
+        "ingredients": {
+          "type": "string",
+          "description": "Comma-separated list of ingredients used to generate the recipe."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp indicating when the recipe was generated.",
+          "format": "date-time"
+        },
+        "recipe": {
+          "type": "string",
+          "description": "The generated recipe text."
+        }
+      },
+      "required": [
+        "id",
+        "ingredients",
+        "timestamp",
+        "recipe"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/recipe_history/{recipeHistoryId}",
+        "definition": {
+          "entityName": "RecipeHistory",
+          "schema": {
+            "$ref": "#/backend/entities/RecipeHistory"
+          },
+          "description": "Stores the history of generated recipes, including ingredients, timestamps, and the generated recipe content.",
+          "params": [
+            {
+              "name": "recipeHistoryId",
+              "description": "Unique identifier for the RecipeHistory entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "Based on the application requirements, the primary data storage need is for recipe generation history. Given that the application provides recipe generation functionality based on user-provided ingredients, the `RecipeHistory` entity should be stored in a collection. Since the user is able to use the application anonymously, the history collection is not stored under the `users/{userId}`. Therefore, we will create a root-level collection called `recipe_history`. Each document will store the ingredients, timestamp, generated recipe, and recipe ID. There is no parent relationship, and therefore no authorization independence considerations."
+  }
+}
