@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChefHat, LogIn, LogOut, Heart, User as UserIcon } from 'lucide-react';
+import { ChefHat, LogOut, Heart, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {

@@ -75,14 +75,6 @@ export async function handleSaveRecipe(
       createdAt: serverTimestamp(),
     });
 
-    // Also save to general history for anonymous users
-    const historyCollection = collection(db, 'recipe_history');
-    await addDoc(historyCollection, {
-      ingredients: recipe.ingredients,
-      recipe: JSON.stringify(recipe),
-      timestamp: serverTimestamp(),
-    });
-
     return { success: true, error: null };
   } catch (e: any) {
     console.error('Failed to save recipe:', e);
