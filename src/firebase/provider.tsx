@@ -67,25 +67,41 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
-// Effect to subscribe to Firebase auth state changes
-useEffect(() => {
+  // Effect to subscribe to Firebase auth state changes and handle redirect result
+  useEffect(() => {
     if (!auth) {
       setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
       return;
     }
 
+    // This promise is used to ensure we don't set loading to false
+    // until getRedirectResult has completed.
+    const redirectResultPromise = getRedirectResult(auth).catch(error => {
+      // Handle potential errors from getRedirectResult, e.g., network issues
+      console.error("Error getting redirect result:", error);
+      setUserAuthState(prevState => ({ ...prevState, userError: error }));
+      return null;
+    });
+
     const unsubscribe = onAuthStateChanged(
       auth,
-      (firebaseUser) => {
+      async (firebaseUser) => {
+        // Wait for getRedirectResult to finish before processing auth state
+        await redirectResultPromise;
+
+        // By the time onAuthStateChanged fires, if a redirect just happened,
+        // firebaseUser will be the signed-in user.
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
-      (error) => {
+      async (error) => {
+        await redirectResultPromise;
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
 
     return () => unsubscribe();
   }, [auth]);
+
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
