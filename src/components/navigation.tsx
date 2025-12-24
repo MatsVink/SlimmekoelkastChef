@@ -56,7 +56,7 @@ export default function Navigation() {
           <ChefHat className="h-7 w-7 text-primary" />
           <span className="font-bold text-lg font-headline">Slimme Koelkast Chef</span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
           {isUserLoading ? (
              <div className="h-8 w-24 bg-muted rounded-md animate-pulse" />
           ) : user && !user.isAnonymous ? (
@@ -95,7 +95,7 @@ export default function Navigation() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button onClick={handleGoogleSignIn}>
+            <Button onClick={handleGoogleSignIn} variant="ghost">
               <LogIn className="mr-2 h-4 w-4" /> Login met Google
             </Button>
           )}

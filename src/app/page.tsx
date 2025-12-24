@@ -8,21 +8,23 @@ export default function Home() {
 
   return (
     <main className="bg-background text-foreground">
-      <div className="relative">
-        {heroImage && (
-          <div className="absolute inset-0 h-[50vh]">
-            <Image
-              src={heroImage.imageUrl}
-              alt={heroImage.description}
-              fill
-              className="w-full h-full object-cover"
-              data-ai-hint={heroImage.imageHint}
-              priority
-            />
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm"></div>
-          </div>
-        )}
-        <div className="relative min-h-[50vh] flex flex-col items-center justify-center p-4 pt-24 text-center">
+      <div className="relative pt-16">
+        <div className="absolute inset-x-0 top-0 h-[50vh]">
+          {heroImage && (
+            <>
+              <Image
+                src={heroImage.imageUrl}
+                alt={heroImage.description}
+                fill
+                className="w-full h-full object-cover"
+                data-ai-hint={heroImage.imageHint}
+                priority
+              />
+              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm"></div>
+            </>
+          )}
+        </div>
+        <div className="relative min-h-[50vh] flex flex-col items-center justify-center p-4 pt-12 text-center">
           <ChefHat className="h-16 w-16 text-primary mb-4" />
           <h1 className="font-headline text-4xl sm:text-5xl md:text-6xl font-bold text-foreground">
             Slimme Koelkast Chef
@@ -32,7 +34,7 @@ export default function Home() {
             wij bedenken de lekkerste recepten.
           </p>
         </div>
-        <div className="w-full max-w-2xl mx-auto px-4 pb-12 -mt-12 md:-mt-16">
+        <div className="relative w-full max-w-2xl mx-auto px-4 pb-12 -mt-12 md:-mt-16">
           <RecipeGenerator />
         </div>
       </div>
