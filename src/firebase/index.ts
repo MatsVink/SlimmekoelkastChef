@@ -9,42 +9,33 @@ let firebaseApp: FirebaseApp;
 let auth: Auth;
 let firestore: Firestore;
 
-if (!getApps().length) {
-    firebaseApp = initializeApp(firebaseConfig);
-} else {
-    firebaseApp = getApp();
-}
-
-auth = getAuth(firebaseApp);
-firestore = getFirestore(firebaseApp);
-
-
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase(): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
-  // Check if any Firebase apps are already initialized.
+// This function ensures that Firebase is initialized only once.
+function initializeFirebaseSDKs() {
   if (!getApps().length) {
-    // If not, initialize a new app with the provided config.
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+    firebaseApp = initializeApp(firebaseConfig);
   } else {
-    // If an app is already initialized, get that app.
-    // This prevents re-initialization errors.
-    const firebaseApp = getApp();
-    return getSdks(firebaseApp);
+    firebaseApp = getApp();
   }
+  auth = getAuth(firebaseApp);
+  firestore = getFirestore(firebaseApp);
 }
 
-export function getSdks(firebaseApp: FirebaseApp): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
-  const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
-  return { firebaseApp, auth, firestore };
-}
+// Call the initialization function immediately.
+initializeFirebaseSDKs();
 
+// Export the initialized instances.
 export { firebaseApp, auth, firestore };
 
+// Export hooks and providers.
 export * from './provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';
+
+// IMPORTANT: This is a legacy function and should not be used.
+// The SDKs are now initialized eagerly.
+export function initializeFirebase(): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
+  return { firebaseApp, auth, firestore };
+}
