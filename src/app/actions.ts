@@ -5,9 +5,33 @@ import {
   type GenerateRecipeInput,
   type GenerateRecipeOutput,
 } from '@/ai/flows/generate-recipes-from-ingredients';
-import { db } from '@/firebase/server';
-import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
+import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+
+// Singleton pattern to ensure Firebase Admin is initialized only once.
+let adminApp: App;
+if (!getApps().length) {
+  // In a real production environment, you would use a more secure way 
+  // to handle credentials, like environment variables or a secret manager.
+  // For this development environment, we'll check for credentials if they exist.
+  try {
+     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
+     adminApp = initializeApp({
+        credential: cert(serviceAccount)
+     });
+  } catch (e) {
+    // If service account key is not available, initialize without it.
+    // This works in some cloud environments where credentials are automatically discovered.
+    console.log("Initializing Firebase Admin without explicit credentials.");
+    adminApp = initializeApp();
+  }
+} else {
+  adminApp = getApps()[0];
+}
+
+const db = getFirestore(adminApp);
+
 
 const formSchema = z.object({
   ingredients: z.string().min(3, { message: 'Voer minimaal 3 tekens in.' }),
@@ -81,7 +105,6 @@ export async function handleSaveRecipe(
   }
 
   try {
-    // Save to user's favorites using the Admin SDK
     const favoritesCollection = db.collection('users').doc(userId).collection('favorites');
     await favoritesCollection.add({
       ...recipe,
