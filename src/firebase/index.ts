@@ -5,6 +5,20 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, signInAnonymously, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
+let firebaseApp: FirebaseApp;
+let auth: Auth;
+let firestore: Firestore;
+
+if (!getApps().length) {
+    firebaseApp = initializeApp(firebaseConfig);
+} else {
+    firebaseApp = getApp();
+}
+
+auth = getAuth(firebaseApp);
+firestore = getFirestore(firebaseApp);
+
+
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase(): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
   // Check if any Firebase apps are already initialized.
@@ -26,8 +40,9 @@ export function getSdks(firebaseApp: FirebaseApp): { firebaseApp: FirebaseApp; a
   return { firebaseApp, auth, firestore };
 }
 
+export { firebaseApp, auth, firestore };
+
 export * from './provider';
-export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './non-blocking-login';

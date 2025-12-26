@@ -5,12 +5,10 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { firebaseApp, auth as authInstance, firestore as firestoreInstance } from '@/firebase';
 
 interface FirebaseProviderProps {
   children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
 }
 
 interface UserAuthState {
@@ -20,16 +18,6 @@ interface UserAuthState {
 }
 
 export interface FirebaseContextState {
-  areServicesAvailable: boolean;
-  firebaseApp: FirebaseApp | null;
-  firestore: Firestore | null;
-  auth: Auth | null;
-  user: User | null;
-  isUserLoading: boolean;
-  userError: Error | null;
-}
-
-export interface FirebaseServicesAndUser {
   firebaseApp: FirebaseApp;
   firestore: Firestore;
   auth: Auth;
@@ -37,6 +25,7 @@ export interface FirebaseServicesAndUser {
   isUserLoading: boolean;
   userError: Error | null;
 }
+
 
 export interface UserHookResult {
   user: User | null;
@@ -48,48 +37,29 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
-  firebaseApp,
-  firestore,
-  auth,
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
-    user: auth?.currentUser ?? null,
+    user: authInstance?.currentUser ?? null,
     isUserLoading: true,
     userError: null,
   });
 
   useEffect(() => {
-    if (!auth) {
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
-      return;
-    }
-    
-    // Flag to track if redirect result has been processed
+    // This effect should only run once.
     let redirectResultProcessed = false;
-
-    // First, try to process the redirect result.
-    getRedirectResult(auth)
-      .then((result) => {
-        // If result is not null, a sign-in via redirect just happened.
-        // onAuthStateChanged will handle the user state update.
-      })
+    
+    getRedirectResult(authInstance)
       .catch((error) => {
         console.error("Error processing redirect result:", error);
         setUserAuthState(prevState => ({ ...prevState, userError: error as Error }));
       })
       .finally(() => {
         redirectResultProcessed = true;
-        
-        // If there's no current user after processing, it means login might have failed
-        // or there was no redirect. We can now safely set loading to false.
-        if (!auth.currentUser) {
-            setUserAuthState(prevState => ({ ...prevState, isUserLoading: false }));
-        }
+        // The onAuthStateChanged listener will now provide the final user state.
       });
 
-    // Then, set up the onAuthStateChanged listener.
     const unsubscribe = onAuthStateChanged(
-      auth,
+      authInstance,
       (firebaseUser) => {
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
@@ -99,20 +69,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     );
 
     return () => unsubscribe();
-  }, [auth]);
+  }, []);
 
   const contextValue = useMemo((): FirebaseContextState => {
-    const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
-      areServicesAvailable: servicesAvailable,
-      firebaseApp: servicesAvailable ? firebaseApp : null,
-      firestore: servicesAvailable ? firestore : null,
-      auth: servicesAvailable ? auth : null,
+      firebaseApp: firebaseApp,
+      firestore: firestoreInstance,
+      auth: authInstance,
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
       userError: userAuthState.userError,
     };
-  }, [firebaseApp, firestore, auth, userAuthState]);
+  }, [userAuthState]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -122,25 +90,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
-export const useFirebase = (): FirebaseServicesAndUser => {
+export const useFirebase = (): FirebaseContextState => {
   const context = useContext(FirebaseContext);
 
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
 
-  if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
-    throw new Error('Firebase core services not available. Check FirebaseProvider props.');
-  }
-
-  return {
-    firebaseApp: context.firebaseApp,
-    firestore: context.firestore,
-    auth: context.auth,
-    user: context.user,
-    isUserLoading: context.isUserLoading,
-    userError: context.userError,
-  };
+  return context;
 };
 
 export const useAuth = (): Auth => {

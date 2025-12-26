@@ -1,19 +1,18 @@
-import { initializeApp, getApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { firebaseConfig } from './config'; 
+import { initializeApp, getApp, getApps, App } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // IMPORTANT: DO NOT USE ON THE CLIENT
 
-function initializeFirebaseAdmin() {
-  if (!getApps().length) {
-    return initializeApp({
-        projectId: firebaseConfig.projectId
-    });
-  }
-  return getApp();
+let app: App;
+if (!getApps().length) {
+  app = initializeApp({
+      // The projectId is discovered from the environment automatically
+      // when deployed to a Google Cloud environment.
+  });
+} else {
+  app = getApp();
 }
 
-const app = initializeFirebaseAdmin();
-const db = getFirestore(app);
+const db: Firestore = getFirestore(app);
 
 export { app, db };

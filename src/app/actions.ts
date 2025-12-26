@@ -40,13 +40,27 @@ export async function handleGenerateRecipe(
       ingredients: validatedFields.data.ingredients,
     };
     const result = await generateRecipe(input);
+
+    // Save recipe generation to history for anonymous users
+    try {
+      const historyCollection = collection(db, 'recipe_history');
+      await addDoc(historyCollection, {
+        ingredients: validatedFields.data.ingredients,
+        recipe: JSON.stringify(result),
+        timestamp: serverTimestamp(),
+      });
+    } catch (e) {
+      // Non-critical, just log it on the server
+      console.error('Failed to save recipe history:', e);
+    }
+
     return { data: result, error: null };
   } catch (e) {
     console.error(e);
     return {
       data: null,
       error:
-        'Er is iets misgegaan bij het genereren van de recepten. Probeer het later opnieuw.',
+        'Er is iets misgegaan bij het genereren van het recept. Probeer het later opnieuw.',
     };
   }
 }
