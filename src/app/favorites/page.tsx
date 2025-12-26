@@ -23,10 +23,13 @@ export default function FavoritesPage() {
 
   const favoritesQuery = useMemo(() => {
     if (!firestore || !user) return null;
-    return query(
+    const q = query(
       collection(firestore, 'users', user.uid, 'favorites'),
       orderBy('createdAt', 'desc')
     );
+    // @ts-ignore
+    q.__memo = true;
+    return q;
   }, [firestore, user]);
 
   const { data: favorites, isLoading, error } = useCollection<FavoriteRecipe>(favoritesQuery);
