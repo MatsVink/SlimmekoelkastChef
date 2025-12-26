@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -44,7 +44,7 @@ export default function RecipeGenerator() {
   const { user, isUserLoading } = useUser();
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    if (!isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, isUserLoading, auth]);
@@ -108,6 +108,23 @@ export default function RecipeGenerator() {
     setIsSaving(false);
   }
 
+  const displayRecipe = useMemo(() => {
+    if (isLoading) return <RecipeLoading />;
+    if (recipe) {
+      return (
+        <RecipeDisplay
+          recipe={recipe}
+          onSave={saveRecipe}
+          isSaving={isSaving}
+          isSaved={isSaved}
+          canSave={!!user}
+        />
+      );
+    }
+    return null;
+  }, [isLoading, recipe, isSaving, isSaved, user, saveRecipe]);
+
+
   return (
     <div className="space-y-8">
       <Form {...form}>
@@ -158,8 +175,7 @@ export default function RecipeGenerator() {
           </Button>
         </form>
       </Form>
-      {isLoading && <RecipeLoading />}
-      {recipe && <RecipeDisplay recipe={recipe} onSave={saveRecipe} isSaving={isSaving} isSaved={isSaved} canSave={!!user} />}
+      {displayRecipe}
     </div>
   );
 }

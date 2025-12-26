@@ -5,17 +5,9 @@ import {
   type GenerateRecipeInput,
   type GenerateRecipeOutput,
 } from '@/ai/flows/generate-recipes-from-ingredients';
-import { initializeApp, getApp, getApps } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { db } from '@/firebase/server';
+import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-
-// Ensure Firebase Admin is initialized
-if (!getApps().length) {
-  initializeApp();
-}
-const db = getFirestore();
-
 
 const formSchema = z.object({
   ingredients: z.string().min(3, { message: 'Voer minimaal 3 tekens in.' }),
@@ -51,11 +43,10 @@ export async function handleGenerateRecipe(
 
     // Save recipe generation to history for anonymous users
     try {
-      const historyCollection = collection(db, 'recipe_history');
-      await addDoc(historyCollection, {
+      await db.collection('recipe_history').add({
         ingredients: validatedFields.data.ingredients,
         recipe: JSON.stringify(result),
-        timestamp: serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
       });
     } catch (e) {
       // Non-critical, just log it on the server
@@ -90,11 +81,11 @@ export async function handleSaveRecipe(
   }
 
   try {
-    // Save to user's favorites
-    const favoritesCollection = collection(db, 'users', userId, 'favorites');
-    await addDoc(favoritesCollection, {
+    // Save to user's favorites using the Admin SDK
+    const favoritesCollection = db.collection('users').doc(userId).collection('favorites');
+    await favoritesCollection.add({
       ...recipe,
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     return { success: true, error: null };
