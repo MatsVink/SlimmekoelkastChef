@@ -9,6 +9,7 @@ interface FirebaseClientProviderProps {
 }
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  // useMemo ensures that initializeFirebase is called only once per component lifecycle.
   const firebaseServices = useMemo(() => {
     return initializeFirebase();
   }, []);

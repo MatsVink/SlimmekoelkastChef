@@ -63,18 +63,31 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
       return;
     }
+    
+    // Flag to track if redirect result has been processed
+    let redirectResultProcessed = false;
 
-    const processAuth = async () => {
-      try {
-        await getRedirectResult(auth);
-      } catch (error) {
+    // First, try to process the redirect result.
+    getRedirectResult(auth)
+      .then((result) => {
+        // If result is not null, a sign-in via redirect just happened.
+        // onAuthStateChanged will handle the user state update.
+      })
+      .catch((error) => {
         console.error("Error processing redirect result:", error);
         setUserAuthState(prevState => ({ ...prevState, userError: error as Error }));
-      }
-    };
+      })
+      .finally(() => {
+        redirectResultProcessed = true;
+        
+        // If there's no current user after processing, it means login might have failed
+        // or there was no redirect. We can now safely set loading to false.
+        if (!auth.currentUser) {
+            setUserAuthState(prevState => ({ ...prevState, isUserLoading: false }));
+        }
+      });
 
-    processAuth();
-
+    // Then, set up the onAuthStateChanged listener.
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
