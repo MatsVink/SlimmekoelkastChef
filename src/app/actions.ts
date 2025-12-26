@@ -5,9 +5,17 @@ import {
   type GenerateRecipeInput,
   type GenerateRecipeOutput,
 } from '@/ai/flows/generate-recipes-from-ingredients';
-import { db } from '@/firebase/server';
+import { initializeApp, getApp, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
+// Ensure Firebase Admin is initialized
+if (!getApps().length) {
+  initializeApp();
+}
+const db = getFirestore();
+
 
 const formSchema = z.object({
   ingredients: z.string().min(3, { message: 'Voer minimaal 3 tekens in.' }),

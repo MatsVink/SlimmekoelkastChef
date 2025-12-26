@@ -37,13 +37,14 @@ const formSchema = z.object({
 export default function RecipeGenerator() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [recipe, setRecipe] = useState<GenerateRecipeOutput | null>(null);
   const { toast } = useToast();
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
 
   useEffect(() => {
-    if (!user && !isUserLoading && auth && !auth.currentUser) {
+    if (!isUserLoading && !user) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, isUserLoading, auth]);
@@ -58,6 +59,7 @@ export default function RecipeGenerator() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setRecipe(null);
+    setIsSaved(false);
 
     const formData = new FormData();
     formData.append('ingredients', values.ingredients);
@@ -78,20 +80,11 @@ export default function RecipeGenerator() {
   }
 
   async function saveRecipe() {
-    if (!recipe) {
-      toast({
-        variant: 'destructive',
-        title: 'Fout',
-        description: 'Geen recept om op te slaan.',
-      });
-      return;
-    }
-
+    if (!recipe) return;
+    
+    // This check now prevents the toast from showing for anonymous users,
+    // as the save button is already hidden. It remains as a safeguard.
     if (!user || user.isAnonymous) {
-      toast({
-        title: 'Inloggen vereist',
-        description: 'Log in om je favoriete recepten op te slaan.',
-      });
       return;
     }
     
@@ -109,6 +102,7 @@ export default function RecipeGenerator() {
         title: "Recept opgeslagen!",
         description: `${recipe.title} is toegevoegd aan je favorieten.`,
       });
+      setIsSaved(true);
     } else {
        toast({
         variant: 'destructive',
@@ -151,7 +145,12 @@ export default function RecipeGenerator() {
             className="w-full transition-all"
             size="lg"
           >
-            {isLoading ? (
+            {isUserLoading ? (
+               <>
+                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+                Laden...
+              </>
+            ) : isLoading ? (
               <>
                 <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
                 Momentje, de chef is aan het denken...
@@ -166,7 +165,7 @@ export default function RecipeGenerator() {
         </form>
       </Form>
       {isLoading && <RecipeLoading />}
-      {recipe && <RecipeDisplay recipe={recipe} onSave={saveRecipe} isSaving={isSaving} />}
+      {recipe && <RecipeDisplay recipe={recipe} onSave={saveRecipe} isSaving={isSaving} isSaved={isSaved} canSave={!!user && !user.isAnonymous} />}
     </div>
   );
 }

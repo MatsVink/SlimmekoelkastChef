@@ -5,10 +5,7 @@ import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 let app: App;
 if (!getApps().length) {
-  app = initializeApp({
-      // The projectId is discovered from the environment automatically
-      // when deployed to a Google Cloud environment.
-  });
+  app = initializeApp();
 } else {
   app = getApp();
 }

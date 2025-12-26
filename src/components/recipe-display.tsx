@@ -16,9 +16,10 @@ type RecipeDisplayProps = {
   onSave?: () => void;
   isSaving?: boolean;
   isSaved?: boolean;
+  canSave?: boolean;
 };
 
-export default function RecipeDisplay({ recipe, onSave, isSaving, isSaved }: RecipeDisplayProps) {
+export default function RecipeDisplay({ recipe, onSave, isSaving, isSaved, canSave }: RecipeDisplayProps) {
   return (
     <Card className="shadow-xl border animate-in fade-in-50 duration-500 flex flex-col">
       <CardHeader>
@@ -34,7 +35,7 @@ export default function RecipeDisplay({ recipe, onSave, isSaving, isSaved }: Rec
               </CardDescription>
             </div>
           </div>
-          {onSave && (
+          {onSave && canSave && (
             <Button variant="ghost" size="icon" onClick={onSave} disabled={isSaving || isSaved}>
               <Heart className={`h-6 w-6 text-primary/70 transition-colors ${isSaved ? 'fill-primary/70' : 'hover:fill-primary/20'}`} />
               <span className="sr-only">Sla recept op</span>
