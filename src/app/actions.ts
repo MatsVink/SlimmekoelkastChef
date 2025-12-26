@@ -5,9 +5,25 @@ import {
   type GenerateRecipeInput,
   type GenerateRecipeOutput,
 } from '@/ai/flows/generate-recipes-from-ingredients';
-import { db } from '@/firebase/server';
 import { z } from 'zod';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+
+// Singleton pattern to ensure Firebase Admin is initialized only once.
+if (!getApps().length) {
+  try {
+     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY!);
+     initializeApp({
+        credential: cert(serviceAccount)
+     });
+  } catch (e) {
+    console.log("Initializing Firebase Admin without explicit credentials, assuming Application Default Credentials.");
+    initializeApp();
+  }
+}
+
+const db = getFirestore();
+
 
 const formSchema = z.object({
   ingredients: z.string().min(3, { message: 'Voer minimaal 3 tekens in.' }),
@@ -40,47 +56,24 @@ export async function handleGenerateRecipe(
       ingredients: validatedFields.data.ingredients,
     };
     const result = await generateRecipe(input);
+
+    try {
+      await db.collection('recipe_history').add({
+        ingredients: validatedFields.data.ingredients,
+        recipe: JSON.stringify(result),
+        timestamp: FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      console.error('Failed to save recipe history:', e);
+    }
+
     return { data: result, error: null };
   } catch (e) {
     console.error(e);
     return {
       data: null,
       error:
-        'Er is iets misgegaan bij het genereren van de recepten. Probeer het later opnieuw.',
-    };
-  }
-}
-
-interface SaveRecipeState {
-  success: boolean;
-  error: string | null;
-}
-
-export async function handleSaveRecipe(
-  recipe: GenerateRecipeOutput & { ingredients: string },
-  userId: string | null
-): Promise<SaveRecipeState> {
-  if (!userId) {
-    return {
-      success: false,
-      error: 'Je moet ingelogd zijn om een recept op te slaan.',
-    };
-  }
-
-  try {
-    // Save to user's favorites
-    const favoritesCollection = collection(db, 'users', userId, 'favorites');
-    await addDoc(favoritesCollection, {
-      ...recipe,
-      createdAt: serverTimestamp(),
-    });
-
-    return { success: true, error: null };
-  } catch (e: any) {
-    console.error('Failed to save recipe:', e);
-    return {
-      success: false,
-      error: e.message || 'Kon het recept niet opslaan.',
+        'Er is iets misgegaan bij het genereren van het recept. Probeer het later opnieuw.',
     };
   }
 }

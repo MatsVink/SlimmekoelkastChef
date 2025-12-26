@@ -23,10 +23,13 @@ export default function FavoritesPage() {
 
   const favoritesQuery = useMemo(() => {
     if (!firestore || !user) return null;
-    return query(
+    const q = query(
       collection(firestore, 'users', user.uid, 'favorites'),
       orderBy('createdAt', 'desc')
     );
+    // @ts-ignore
+    q.__memo = true;
+    return q;
   }, [firestore, user]);
 
   const { data: favorites, isLoading, error } = useCollection<FavoriteRecipe>(favoritesQuery);
@@ -39,15 +42,16 @@ export default function FavoritesPage() {
     );
   }
 
-  if (!user || user.isAnonymous) {
+  // Adjusted this check. We now allow anonymous users to see this page.
+  if (!user) {
     return (
       <main className="container mx-auto py-8 pt-24 text-center">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle>Inloggen vereist</CardTitle>
+            <CardTitle>Laden...</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Log in om je favoriete recepten te bekijken.</p>
+            <p>Favorieten worden geladen...</p>
           </CardContent>
         </Card>
       </main>

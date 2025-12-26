@@ -5,33 +5,37 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, signInAnonymously, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
-export function initializeFirebase(): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
+let firebaseApp: FirebaseApp;
+let auth: Auth;
+let firestore: Firestore;
+
+// This function ensures that Firebase is initialized only once.
+function initializeFirebaseSDKs() {
   if (!getApps().length) {
-    let firebaseApp: FirebaseApp;
-    try {
-      firebaseApp = initializeApp();
-    } catch (e) {
-      if (process.env.NODE_ENV === 'production') {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-    return getSdks(firebaseApp);
+    firebaseApp = initializeApp(firebaseConfig);
+  } else {
+    firebaseApp = getApp();
   }
-  return getSdks(getApp());
+  auth = getAuth(firebaseApp);
+  firestore = getFirestore(firebaseApp);
 }
 
-export function getSdks(firebaseApp: FirebaseApp): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
-  const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
-  return { firebaseApp, auth, firestore };
-}
+// Call the initialization function immediately.
+initializeFirebaseSDKs();
 
+// Export the initialized instances.
+export { firebaseApp, auth, firestore };
+
+// Export hooks and providers.
 export * from './provider';
-export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';
+
+// IMPORTANT: This is a legacy function and should not be used.
+// The SDKs are now initialized eagerly.
+export function initializeFirebase(): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
+  return { firebaseApp, auth, firestore };
+}

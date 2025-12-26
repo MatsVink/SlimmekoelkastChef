@@ -6,7 +6,7 @@
 
 -   **Recepten Genereren:** Voer een lijst met ingrediënten in en ontvang direct een compleet recept, inclusief titel, bereidingstijd en stapsgewijze instructies.
 -   **AI-gebaseerd:** Maakt gebruik van de Google Gemini API via Genkit voor het genereren van unieke en creatieve recepten.
--   **Favorieten Opslaan:** Log in met je Google-account om je favoriete recepten op te slaan en later terug te vinden.
+-   **Favorieten Opslaan:** Elke gebruiker krijgt automatisch een anoniem profiel. Je kunt je favoriete recepten opslaan en deze later terugvinden op hetzelfde apparaat.
 -   **Moderne Interface:** Een strakke en gebruiksvriendelijke interface gebouwd met Next.js, Tailwind CSS en ShadCN UI.
 
 ## 🛠️ Technologie
@@ -15,7 +15,7 @@ Dit project is gebouwd met een moderne, op TypeScript en React gebaseerde stack:
 
 -   **Framework:** [Next.js](https://nextjs.org/) (App Router)
 -   **Styling:** [Tailwind CSS](https://tailwindcss.com/) & [ShadCN UI](https://ui.shadcn.com/)
--   **Backend & Authenticatie:** [Firebase](https://firebase.google.com/) (Authentication & Firestore)
+-   **Backend & Authenticatie:** [Firebase](https://firebase.google.com/) (Anonymous Authentication & Firestore)
 -   **AI Integratie:** [Genkit](https://firebase.google.com/docs/genkit)
 -   **Taal:** [TypeScript](https://www.typescriptlang.org/)
 
@@ -43,7 +43,7 @@ Volg deze stappen om het project lokaal op te zetten en te draaien.
     ```
 
 3.  **Firebase Configuratie:**
-    Zorg ervoor dat je Firebase project is geconfigureerd en dat je de configuratie hebt toegevoegd aan `src/firebase/config.ts`. Schakel **Google Sign-In** in als authenticatiemethode in de Firebase Console.
+    Zorg ervoor dat je Firebase project is geconfigureerd en dat je de configuratie hebt toegevoegd aan `src/firebase/config.ts`. Schakel **Anonymous Sign-In** in als authenticatiemethode in de Firebase Console.
 
 4.  **Start de development server:**
     ```bash

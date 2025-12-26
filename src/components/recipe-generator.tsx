@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,7 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { handleGenerateRecipe, handleSaveRecipe } from '@/app/actions';
+import { handleGenerateRecipe } from '@/app/actions';
 import { Sparkles, LoaderCircle } from 'lucide-react';
 import RecipeDisplay from './recipe-display';
 import RecipeLoading from './recipe-loading';
@@ -24,8 +29,11 @@ import {
   useAuth,
   useUser,
   initiateAnonymousSignIn,
+  useFirestore,
 } from '@/firebase';
 import type { GenerateRecipeOutput } from '@/ai/flows/generate-recipes-from-ingredients';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 const formSchema = z.object({
@@ -37,13 +45,15 @@ const formSchema = z.object({
 export default function RecipeGenerator() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [recipe, setRecipe] = useState<GenerateRecipeOutput | null>(null);
   const { toast } = useToast();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
 
   useEffect(() => {
-    if (!user && !isUserLoading && auth && !auth.currentUser) {
+    if (!isUserLoading && !user && auth) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, isUserLoading, auth]);
@@ -58,6 +68,7 @@ export default function RecipeGenerator() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setRecipe(null);
+    setIsSaved(false);
 
     const formData = new FormData();
     formData.append('ingredients', values.ingredients);
@@ -78,47 +89,65 @@ export default function RecipeGenerator() {
   }
 
   async function saveRecipe() {
-    if (!recipe) {
-      toast({
-        variant: 'destructive',
-        title: 'Fout',
-        description: 'Geen recept om op te slaan.',
-      });
-      return;
-    }
-
-    if (!user || user.isAnonymous) {
-      toast({
-        title: 'Inloggen vereist',
-        description: 'Log in om je favoriete recepten op te slaan.',
-      });
-      return;
-    }
+    if (!recipe || !user || !firestore) return;
     
     setIsSaving(true);
-    const result = await handleSaveRecipe(
-      {
+    
+    try {
+      const favoritesCollection = collection(firestore, 'users', user.uid, 'favorites');
+      
+      addDoc(favoritesCollection, {
         ...recipe,
         ingredients: form.getValues('ingredients'),
-      },
-      user.uid
-    );
-    
-    if (result.success) {
+        createdAt: serverTimestamp(),
+      }).catch(error => {
+          const permissionError = new FirestorePermissionError({
+            path: favoritesCollection.path,
+            operation: 'create',
+            requestResourceData: recipe
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          // Also show a toast to the user
+          toast({
+            variant: 'destructive',
+            title: 'Oeps! Kon recept niet opslaan.',
+            description: 'Je hebt mogelijk geen toestemming om dit te doen.',
+          });
+      });
+
       toast({
         title: "Recept opgeslagen!",
         description: `${recipe.title} is toegevoegd aan je favorieten.`,
       });
-    } else {
+      setIsSaved(true);
+
+    } catch (e: any) {
        toast({
         variant: 'destructive',
         title: 'Oeps! Er is iets misgegaan.',
-        description: result.error,
+        description: e.message || 'Kon het recept niet opslaan.',
       });
     }
 
     setIsSaving(false);
   }
+
+  const displayRecipe = useMemo(() => {
+    if (isLoading) return <RecipeLoading />;
+    if (recipe) {
+      return (
+        <RecipeDisplay
+          recipe={recipe}
+          onSave={saveRecipe}
+          isSaving={isSaving}
+          isSaved={isSaved}
+          canSave={!!user}
+        />
+      );
+    }
+    return null;
+  }, [isLoading, recipe, isSaving, isSaved, user]);
+
 
   return (
     <div className="space-y-8">
@@ -151,7 +180,12 @@ export default function RecipeGenerator() {
             className="w-full transition-all"
             size="lg"
           >
-            {isLoading ? (
+            {isUserLoading ? (
+               <>
+                <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
+                Laden...
+              </>
+            ) : isLoading ? (
               <>
                 <LoaderCircle className="mr-2 h-5 w-5 animate-spin" />
                 Momentje, de chef is aan het denken...
@@ -165,8 +199,7 @@ export default function RecipeGenerator() {
           </Button>
         </form>
       </Form>
-      {isLoading && <RecipeLoading />}
-      {recipe && <RecipeDisplay recipe={recipe} onSave={saveRecipe} isSaving={isSaving} />}
+      {displayRecipe}
     </div>
   );
 }
