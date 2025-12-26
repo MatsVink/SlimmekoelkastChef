@@ -1,32 +1,34 @@
 /**
- * This ruleset enforces a strict append-only security model for the application's recipe history.
+ * This ruleset enforces security for the application's data, balancing
+ * anonymous recipe history and user-specific favorite recipes.
  *
  * Core Philosophy:
- * The primary security goal is to allow any authenticated user, including those signed in anonymously,
- * to save their recipe generation history without being able to view or modify any other history
- * entries, including their own. This creates a "write-only" or "append-only" log.
+ * The security model allows any user (including anonymous ones) to contribute to a global,
+ * append-only recipe history. Additionally, any authenticated user (including anonymous)
+ * can manage their own private list of favorite recipes.
  *
  * Data Structure:
- * All data is stored in a single, top-level collection named `recipe_history`. There are no
- * user-specific subcollections, as the application supports anonymous users and the data schema
- * does not contain user ownership information.
+ * - `/recipe_history`: A top-level collection for all generated recipes. It is append-only.
+ * - `/users/{userId}/favorites`: A subcollection under each user (identified by their unique
+ *   auth UID) to store their personal favorite recipes. Access is restricted to the owner.
  *
  * Key Security Decisions:
- * - Append-Only Access: Users can only `create` new documents in the `recipe_history` collection.
- * - No Reads or Modifications: All `get`, `list`, `update`, and `delete` operations are explicitly
- *   denied. This is the most secure posture, preventing any possibility of one user viewing another's
- *   data and protecting the integrity of the history log.
- * - Anonymous Users are Authenticated: The rules treat anonymous users as "signed in," allowing
- *   them to contribute to the history log.
+ * - Append-Only History: Users can only `create` new documents in `/recipe_history`.
+ *   Read, update, and delete are denied to protect the integrity and privacy of the log.
+ * - Owner-Only Favorites: Users can only read and write to their own `/favorites`
+ *   subcollection. The `isOwner()` function enforces this by matching the user's UID
+ *   with the `userId` in the path.
+ * - Anonymous Users are Authenticated: The rules treat anonymous users as "signed in,"
+ *   granting them the same capabilities as fully registered users for writing to history
+ *   and managing their own favorites.
  *
  * Denormalization for Authorization:
- * This principle is not applicable here, as the chosen security model (append-only) does not require
- * relational data for its authorization checks. If user-specific access were required in the future,
- * the `recipe_history` documents would need to be denormalized with a `userId` field.
+ * The `userId` in the `/users/{userId}` path is the key piece of "denormalized" data
+ * that enables authorization checks for the `favorites` subcollection.
  *
  * Structural Segregation:
- * This principle is not applicable, as all data in the `recipe_history` collection shares the same
- * security profile (private, append-only).
+ * The data is segregated into a public-write collection (`recipe_history`) and
+ * private user-specific collections (`users/{userId}`), each with distinct security rules.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -42,32 +44,49 @@ service cloud.firestore {
     }
 
     /**
+     * Checks if the currently authenticated user is the owner of the document.
+     * @param userId The UID of the user to check against.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
      * @description
      *   Rules for the `recipe_history` collection, which acts as an append-only log.
      *   Any signed-in user (including anonymous users) can create a new history
      *   entry, but no one can read, update, or delete any entries.
-     * @path
-     *   /recipe_history/{recipeHistoryId}
-     * @allow
-     *   (create) An anonymous or signed-in user creates a new recipe history document.
-     * @deny
-     *   (get) Any user, signed-in or not, tries to read a recipe history document.
-     * @deny
-     *   (update) Any user tries to modify an existing recipe history document.
-     * @principle
-     *   Implements a secure append-only log. This is the most secure approach
-     *   for a collection where documents lack an explicit ownership field, as it
-     *   prevents data leakage and modification.
      */
     match /recipe_history/{recipeHistoryId} {
-      // READ operations are completely disallowed to prevent any user from seeing another's history.
       allow get: if false;
       allow list: if false;
-
-      // WRITE operations are restricted to creating new documents.
       allow create: if isSignedIn();
       allow update: if false;
       allow delete: if false;
+    }
+
+    /**
+     * @description
+     *   Rules for user-specific data. This path itself doesn't hold data but
+     *   acts as a container for user subcollections.
+     */
+    match /users/{userId} {
+      // Users can't directly read or write their main user document through the client.
+      allow read, write: if false;
+
+      /**
+       * @description
+       *   Rules for a user's 'favorites' subcollection.
+       *   Only the owner of the user document can read, write, or delete
+       *   their own favorite recipes. This applies to anonymous users as well.
+       * @path
+       *   /users/{userId}/favorites/{favoriteId}
+       * @allow
+       *   (read, write) The authenticated user's UID matches the {userId} in the path.
+       */
+      match /favorites/{favoriteId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }

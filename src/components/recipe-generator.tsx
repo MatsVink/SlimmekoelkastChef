@@ -80,13 +80,7 @@ export default function RecipeGenerator() {
   }
 
   async function saveRecipe() {
-    if (!recipe) return;
-    
-    // This check now prevents the toast from showing for anonymous users,
-    // as the save button is already hidden. It remains as a safeguard.
-    if (!user || user.isAnonymous) {
-      return;
-    }
+    if (!recipe || !user) return;
     
     setIsSaving(true);
     const result = await handleSaveRecipe(
@@ -165,7 +159,7 @@ export default function RecipeGenerator() {
         </form>
       </Form>
       {isLoading && <RecipeLoading />}
-      {recipe && <RecipeDisplay recipe={recipe} onSave={saveRecipe} isSaving={isSaving} isSaved={isSaved} canSave={!!user && !user.isAnonymous} />}
+      {recipe && <RecipeDisplay recipe={recipe} onSave={saveRecipe} isSaving={isSaving} isSaved={isSaved} canSave={!!user} />}
     </div>
   );
 }

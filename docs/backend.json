@@ -25,6 +25,38 @@
         "timestamp",
         "recipe"
       ]
+    },
+     "FavoriteRecipe": {
+      "title": "FavoriteRecipe",
+      "type": "object",
+      "description": "Represents a user's saved favorite recipe.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the recipe."
+        },
+        "preparationTime": {
+          "type": "string",
+          "description": "The estimated preparation time."
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The steps to prepare the recipe."
+        },
+        "ingredients": {
+          "type": "string",
+          "description": "The ingredients used to generate this recipe."
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the recipe was saved."
+        }
+      },
+      "required": ["title", "preparationTime", "steps", "ingredients", "createdAt"]
     }
   },
   "auth": {
@@ -33,7 +65,7 @@
     ]
   },
   "firestore": {
-    "structure": [
+     "structure": [
       {
         "path": "/recipe_history/{recipeHistoryId}",
         "definition": {
@@ -41,16 +73,19 @@
           "schema": {
             "$ref": "#/backend/entities/RecipeHistory"
           },
-          "description": "Stores the history of generated recipes, including ingredients, timestamps, and the generated recipe content.",
-          "params": [
-            {
-              "name": "recipeHistoryId",
-              "description": "Unique identifier for the RecipeHistory entry."
-            }
-          ]
+          "description": "Stores the history of generated recipes, including ingredients, timestamps, and the generated recipe content."
         }
+      },
+      {
+          "path": "/users/{userId}/favorites/{favoriteId}",
+          "definition": {
+            "entityName": "FavoriteRecipe",
+            "schema": {
+                "$ref": "#/backend/entities/FavoriteRecipe"
+            },
+            "description": "Stores a user's favorite recipes. Only accessible by the user."
+          }
       }
-    ],
-    "reasoning": "Based on the application requirements, the primary data storage need is for recipe generation history. Given that the application provides recipe generation functionality based on user-provided ingredients, the `RecipeHistory` entity should be stored in a collection. Since the user is able to use the application anonymously, the history collection is not stored under the `users/{userId}`. Therefore, we will create a root-level collection called `recipe_history`. Each document will store the ingredients, timestamp, and the generated recipe. There is no parent relationship, and therefore no authorization independence considerations."
+    ]
   }
 }
